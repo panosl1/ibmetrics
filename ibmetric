@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Copyright (c) 2004-2012 Bright Computing Holding BV. All Rights Reserved.
+#
+# This software is the confidential and proprietary information of
+# Bright Computing Holding BV ("Confidential Information").  You shall not
+# disclose such Confidential Information and shall use it only in
+# accordance with the terms of the license agreement you entered into
+# with Bright Computing Holding BV or its subsidiaries.
+
+# This is a test metric collection script, producing some random data, i.e. random numbers
+# for a couple of metrics.
+# In cmsh this would look like:
+#    [master]% monitoring setup use slave;
+#    [master->monitoring->setup[slave]]% metricconf
+#    [master->monitoring->setup[slave]->metricconf]% add testcollection
+#    [master->monitoring->setup[slave]->metricconf[testcollection]]% commit
+# It is also possible to configure this in the cmgui.
+# This script can be tested on the command line as well:
+#    [root@master ~]# export CMD_HOSTNAME=node001
+#    [root@master ~]# ./testmetric --inialize 3>&1
+#    [root@master ~]# export CMD_CMDSTARTEDTIME=`date +%s`;./testmetric 3>&1
+# As an aside, metric collection scripts don't support InfoMessages yet. So you can't write
+# to file descriptor 3 as in the testmetric and testhealthcheck scripts.
+# There are 2 phases in which this script is called.
+
+MAXPORTS=$(ibstat -p | wc -l)
+
+if [[ $1 = "--initialize" ]]; then
+  # The first is at the boot time, when the definitions of the metrics are retrieved by
+  # calling this script with --initialize. Using these definitions, new metrics will be created.
+  # There are 7 fields which can be defined for a new metric. The first is always bareword 'metric'.
+  # Then: name, unit name, class of metric, description (between quotes), flag for whether this
+  # is a cumulative metric or not, minimum and maximum value.
+  # valid values for class of metric: misc, cpu, disk, memory, network, environmental, operatingsystem
+  # internal, workload, cluster and gpu.
+  for (( x=1; x<=$MAXPORTS; x++ ))
+    do
+
+  echo "metric PortXmitData.$x MBs network 'HCA transmitted data' no  0 0"
+  echo "metric PortRcvData.$x MBs network 'HCA received data' no  0 0"
+  echo "metric PortXmitPkts.$x nr network 'HCA transmitted packets' no  0 0"
+  echo "metric PortRcvPkts.$x nr network 'HCA received packets' no  0 0"
+done
+
+else
+  # The other times is during 'normal' sampling.
+
+ for (( x=1; x<=$MAXPORTS; x++ ))
+    do
+
+
+perf_query_out="`perfquery -P $x`"
+
+
+   value1=$(bc -l <<< $(echo "$perf_query_out" | grep PortRcvData |  awk -F"." '{print $NF}')*10/1048576)
+   echo "metric PortRcvData.$x $value1"
+
+   value2=$(bc -l <<< $(echo "$perf_query_out" | grep PortXmitData |  awk -F"." '{print $NF}')*10/1048576)
+   echo "metric PortXmitData.$x $value2"
+
+   value3=$(echo "$perf_query_out"  | grep PortRcvPkts |  awk -F"." '{print $NF}')
+   echo "metric PortRcvPkts.$x $value3"
+
+   value4=$(echo "$perf_query_out"  | grep PortXmitPkts |  awk -F"." '{print $NF}')
+   echo "metric PortXmitPkts.$x $value4"
+
+   done
+
+fi
+
+# Above, you see an example of a preset environment variable, $CMD_HOSTNAME
+# There are more environment variables set, all prefixed with CMD_. You can show
+# them if you print the environment here in this script to a file, e.g.:
+#   set > /tmp/environment
+# Currently (but subject to new variables being added), the list is (with example values):
+#
+# CMD_CMDSTARTEDTIME=1277716477  # time when cmdaemon process started
+# CMD_HOSTNAME=node001
+# CMD_IP=10.141.0.1
+# CMD_BMCPASSWORD=trRasf125ErT
+# CMD_BMCUSERNAME=ADMIN
+# CMD_METRICNAME=testmetric
+# CMD_METRICPARAM='40 100'
+# CMD_PORT=8081
+# CMD_PROTOCOL=https
+# CMD_STATUS=UP
+# CMD_USERDEFINED1=
+# CMD_USERDEFINED2=

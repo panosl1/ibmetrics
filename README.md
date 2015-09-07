@@ -80,4 +80,4 @@ cmsh -c "device use node001; sample *"
 ```
 to sample the current values.
 
-![Image of CMGUI window](https://cray.panix.eu/ST6XC9-2.PNG)
+![Image of CMGUI window](https://cray.panix.eu/cmgui.png)
